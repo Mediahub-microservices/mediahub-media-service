@@ -6,6 +6,7 @@ import com.mediahub.media_service.dto.request.MediaRequestDto;
 import com.mediahub.media_service.dto.response.MediaResponseDto;
 import com.mediahub.media_service.exception.DuplicateResourceException;
 import com.mediahub.media_service.exception.ResourceNotFoundException;
+import com.mediahub.media_service.mapper.MediaMapper;
 import com.mediahub.media_service.repository.MediaRepository;
 import com.mediahub.media_service.service.MediaService;
 import lombok.RequiredArgsConstructor;
@@ -22,6 +23,7 @@ import java.util.List;
 public class MediaServiceImpl implements MediaService {
 
     private final MediaRepository mediaRepository;
+    private final MediaMapper mediaMapper;
 
     @Override
     @Transactional
@@ -29,21 +31,21 @@ public class MediaServiceImpl implements MediaService {
         if (mediaRepository.existsByTitleIgnoreCase(dto.getTitle())) {
             throw new DuplicateResourceException("Un média avec ce titre existe déjà");
         }
-        Media media = toEntity(dto);
+        Media media = mediaMapper.toEntity(dto);
         media = mediaRepository.save(media);
-        return toDto(media);
+        return mediaMapper.toDto(media);
     }
 
     @Override
     public MediaResponseDto getMediaById(Long id) {
         Media media = mediaRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Média introuvable avec l'id : " + id));
-        return toDto(media);
+        return mediaMapper.toDto(media);
     }
 
     @Override
     public Page<MediaResponseDto> getAllMedia(Pageable pageable) {
-        return mediaRepository.findAll(pageable).map(this::toDto);
+        return mediaRepository.findAll(pageable).map(mediaMapper::toDto);
     }
 
     @Override
@@ -62,7 +64,7 @@ public class MediaServiceImpl implements MediaService {
         media.setCategory(dto.getCategory());
         media.setRating(dto.getRating());
         media = mediaRepository.save(media);
-        return toDto(media);
+        return mediaMapper.toDto(media);
     }
 
     @Override
@@ -81,48 +83,21 @@ public class MediaServiceImpl implements MediaService {
 
         if (hasTitle && hasGenre) {
             return mediaRepository.findByTitleContainingIgnoreCaseAndGenre(title, genre).stream()
-                    .map(this::toDto)
+                    .map(mediaMapper::toDto)
                     .toList();
         }
         if (hasTitle) {
             return mediaRepository.findByTitleContainingIgnoreCase(title).stream()
-                    .map(this::toDto)
+                    .map(mediaMapper::toDto)
                     .toList();
         }
         if (hasGenre) {
             return mediaRepository.findByGenre(genre).stream()
-                    .map(this::toDto)
+                    .map(mediaMapper::toDto)
                     .toList();
         }
         return mediaRepository.findAll().stream()
-                .map(this::toDto)
+                .map(mediaMapper::toDto)
                 .toList();
-    }
-
-    private Media toEntity(MediaRequestDto dto) {
-        return Media.builder()
-                .title(dto.getTitle())
-                .description(dto.getDescription())
-                .releaseYear(dto.getReleaseYear())
-                .duration(dto.getDuration())
-                .genre(dto.getGenre())
-                .category(dto.getCategory())
-                .rating(dto.getRating())
-                .build();
-    }
-
-    private MediaResponseDto toDto(Media media) {
-        return MediaResponseDto.builder()
-                .id(media.getId())
-                .title(media.getTitle())
-                .description(media.getDescription())
-                .releaseYear(media.getReleaseYear())
-                .duration(media.getDuration())
-                .genre(media.getGenre())
-                .category(media.getCategory())
-                .rating(media.getRating())
-                .createdAt(media.getCreatedAt())
-                .updatedAt(media.getUpdatedAt())
-                .build();
     }
 }
